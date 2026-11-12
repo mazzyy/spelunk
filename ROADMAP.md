@@ -43,7 +43,7 @@ What works:
 - Review list → plan dialog → job with progress → results. Bin, permanent delete, verified move to external drive with manifest.
 - Action log, Activity tab, Show in Finder.
 - **Downloadable Mac app:** `Spelunk.app` (PyInstaller + pywebview native window) and a DMG, built by `packaging/build_app.sh` and by GitHub Actions on every `v*` tag (`.github/workflows/release.yml`). Optional Developer ID signing + notarization when secrets are set. Full Disk Access detection with an "Open settings" button.
-- 31 tests (scanner, rules, actions incl. failed-verification path, server security).
+- 32 tests (scanner, rules, actions incl. failed-verification path, server security).
 - Verified on a real MacBook home folder: 518k files scanned in 72 s (Python, read-only).
 
 Known limitations (each is addressed below):

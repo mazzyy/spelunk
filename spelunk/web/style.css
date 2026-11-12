@@ -207,7 +207,7 @@ main { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
 .queue-list li span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .queue-list .x { appearance: none; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; }
 .queue-actions { display: grid; gap: 8px; }
-.move-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.move-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
 select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); min-width: 0; }
 
 /* ------------------------------------------------------------ dialog */

@@ -108,3 +108,16 @@ def test_generic_cache_children_are_suggested(tmp_path):
     assert recs[f"{home}/Library/Caches/Google"] == "caches-browsers"
     assert recs[f"{home}/proj/node_modules"] == "node-modules"
     assert f"{home}/Library/Caches" not in recs
+
+
+def test_big_files_in_personal_folders_are_suggested(tmp_path):
+    from tests.conftest import write
+    from spelunk.scanner import Scanner
+    home = str(tmp_path / "h")
+    write(f"{home}/Movies/talk.mov", 2_000_000)
+    write(f"{home}/Desktop/Lectures/week1.m4v", 2_000_000)
+    app = App(roots=[home], home=home, min_node_bytes=100_000)
+    app.tree = Scanner(min_node_bytes=100_000).scan([home])
+    recs = {r["path"]: r["info"]["id"] for r in app.recommendations(min_bytes=1_000_000)}
+    assert recs[f"{home}/Movies/talk.mov"] in ("user-files", "videos")
+    assert recs[f"{home}/Desktop/Lectures/week1.m4v"] == "videos"

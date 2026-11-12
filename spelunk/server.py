@@ -130,7 +130,9 @@ class App:
             inherited = bool(info.get("inherited"))
             if not inherited:
                 tip = info.get("safety") == "keep" and info.get("action") in ("app", "command")
-                if rid not in SPLIT_RULES and (actionable or tip):
+                # Container rules are split into their children, but a single
+                # big file (e.g. a video directly in ~/Movies) is its own item.
+                if (rid not in SPLIT_RULES or not n.is_dir) and (actionable or tip):
                     return [item(n, info, tip, actionable)]
                 return [x for c in (n.children or ()) for x in visit(c)]
             # Inside a folder explained by an ancestor rule: prefer anything

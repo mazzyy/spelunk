@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spelunk-mac"
-version = "0.1.0"
-description = "See everything that fills your Mac's disk, including hidden System Data, and decide what to delete or move."
+version = "0.1.1"
+description = "Free, open-source MacBook storage cleaner: see everything that fills your Mac, including hidden System Data, and decide what to delete or move."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Abdul Musawar Soomro" }]
-keywords = ["macos", "disk", "storage", "cleanup", "system data"]
+keywords = ["macos", "macbook", "storage cleaner", "disk space", "system data", "cleanup", "disk analyzer"]
 classifiers = [
   "Environment :: MacOS X",
   "Operating System :: MacOS",

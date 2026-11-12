@@ -422,7 +422,7 @@ async function loadExternals() {
   state.externals = volumes.filter((v) => v.writable && !v.is_disk_image);
   const sel = $("driveSelect");
   sel.replaceChildren(...(state.externals.length
-    ? state.externals.map((v) => h("option", { value: v.path, text: `${v.name} — ${human(v.free)} free${v.filesystem ? " · " + v.filesystem : ""}` }))
+    ? state.externals.map((v) => h("option", { value: v.path, title: v.filesystem || "", text: `${v.name} · ${human(v.free)} free` }))
     : [h("option", { value: "", text: "No external drive connected" })]));
   renderQueue();
 }

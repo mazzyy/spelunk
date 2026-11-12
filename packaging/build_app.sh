@@ -3,7 +3,7 @@
 #
 #   packaging/build_app.sh
 #
-# Output: dist/Spelunk.app and dist/Spelunk-<version>-<arch>.dmg
+# Output: dist/Spelunk.app and dist/Spelunk-macOS-<arch>.dmg (arch: arm64 or x86_64)
 #
 # Optional environment:
 #   PYTHON=python3.12                       Python to build with (3.9-3.13)
@@ -50,7 +50,8 @@ codesign --verify --deep --strict "$APP"
 STAGE=$(mktemp -d)
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-DMG="dist/Spelunk-$VERSION-$ARCH.dmg"
+# Stable name so README can link to releases/latest/download/Spelunk-macOS-arm64.dmg
+DMG="dist/Spelunk-macOS-$ARCH.dmg"
 hdiutil create -quiet -volname "Spelunk" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
 rm -rf "$STAGE"
 if [[ "$IDENTITY" != "-" ]]; then
