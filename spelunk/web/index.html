@@ -69,6 +69,8 @@
       <section class="panel main-panel">
         <nav class="tabs" role="tablist">
           <button role="tab" class="tab active" data-tab="suggest" aria-selected="true">Suggestions</button>
+          <button role="tab" class="tab" data-tab="apps" aria-selected="false">Unused apps</button>
+          <button role="tab" class="tab" data-tab="dups" aria-selected="false">Duplicates</button>
           <button role="tab" class="tab" data-tab="explore" aria-selected="false">Explore</button>
           <button role="tab" class="tab" data-tab="history" aria-selected="false">Activity</button>
         </nav>
@@ -76,6 +78,28 @@
         <div class="tabpane" id="pane-suggest">
           <p class="hint">The biggest things you can decide on. Nothing happens until you add items to the review list and confirm.</p>
           <div id="suggestList" class="groups"></div>
+        </div>
+
+        <div class="tabpane hidden" id="pane-apps">
+          <p class="hint">Data left behind by apps you've deleted, and apps you haven't opened for months. Tick what you don't need, then use the review list. Apps go to the Bin through Finder, which may ask for your password.</p>
+          <div id="appsBox" class="groups"></div>
+        </div>
+
+        <div class="tabpane hidden" id="pane-dups">
+          <p class="hint">Identical files in your own folders (Desktop, Documents, Downloads, Movies…). Apps, photo and music libraries, Library and project folders like node_modules are never compared.</p>
+          <div class="dup-controls">
+            <label for="dupMin">Files bigger than</label>
+            <select id="dupMin">
+              <option value="1000000">1 MB</option>
+              <option value="10000000" selected>10 MB</option>
+              <option value="100000000">100 MB</option>
+            </select>
+            <button class="btn primary" id="dupStart" type="button">Find duplicates</button>
+            <button class="btn hidden" id="dupKeepOldest" type="button">Select all but the oldest copy</button>
+          </div>
+          <div class="sub" id="dupStatus"></div>
+          <div id="dupList" class="groups"></div>
+          <p class="hint">Copies made with Finder on APFS can share disk space. Removing one of those frees less than shown.</p>
         </div>
 
         <div class="tabpane hidden" id="pane-explore">

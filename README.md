@@ -63,6 +63,16 @@ Nothing happens until you add items to the **review list** and confirm a plan th
 ### Move files to your external SSD, safely
 Files are copied, **checked byte-for-byte (SHA-256)**, and only then removed from your Mac. A `manifest.jsonl` on the drive records where everything came from. If anything fails, the original stays where it was.
 
+### Unused apps and leftovers of apps you removed
+Finds data that deleted apps left behind in `~/Library` (for example a VPN you uninstalled that still keeps 500 MB), and apps you haven't opened in six months, together with all of their data. Uninstalling an app here moves the app **and** its leftovers to the Bin in one step. Finder does the move, so **Put Back** works and macOS asks for your password when an app needs it.
+
+![Unused apps tab: leftovers from removed apps such as Surfshark and GitKraken CLI, and apps not opened in 6 months such as Xcode and Keynote, with their sizes](docs/unused-apps.png)
+
+### Duplicates
+Finds identical files in your own folders. It compares sizes first, then a quick fingerprint, then the full file (SHA-256), so it's fast and never confuses similar files. One click selects every extra copy and keeps the oldest. Apps, photo and music libraries, `~/Library` and project folders are never touched.
+
+![Duplicates tab: three sets of identical files with the extra copies selected for removal](docs/duplicates.png)
+
 ### Sees what other tools can't
 It shows macOS's own volumes (System, Preboot, Recovery, swap), local snapshots such as an update waiting to install, and how much space it still can't read and why. If macOS is hiding protected folders, Spelunk tells you how to allow Full Disk Access with one button.
 
@@ -201,6 +211,12 @@ Yes. They're in `Spelunk Archive/` on the drive, in the same folder structure as
 **Is it safe to clear caches?**
 Items marked *Safe to clear* are rebuilt automatically by their app. Quit the app first. Spelunk never marks anything as safe if removing it could lose your data.
 
+**Can I keep Spelunk (or other apps) on my external SSD?**
+Keep apps in your Mac's Applications folder. Most external drives are formatted as exFAT. When an app is copied there, macOS adds hidden `._` files inside it, which breaks the app's code signature, so it won't open. Spelunk warns you if you try to move an app to such a drive. Files like videos and documents are fine to move.
+
+**How does Spelunk decide an app's data is a "leftover"?**
+It reads every installed app's identifier (its bundle ID, name and developer Team ID) and only reports Library data that none of them can own. Apple's own data and command-line tool caches are never reported. It's still your call: check the list before removing.
+
 **Intel Mac?**
 Install from source or build the app yourself on that Mac. Both work.
 
@@ -226,7 +242,9 @@ spelunk/
   system.py         APFS volumes, snapshots, external drives, Full Disk Access check
   knowledge.py      path → explanation engine + hard deny list
   rules/macos.json  the knowledge base (add rules here!)
-  actions.py        plan / execute: Bin, delete, verified move
+  apps.py           installed apps, last opened, leftovers of removed apps
+  duplicates.py     duplicate finder (size → fingerprint → SHA-256)
+  actions.py        plan / execute: Bin (via Finder), delete, verified move
   server.py         local API (token + host check) and suggestions
   desktop.py        app entry: native window (pywebview) or browser fallback
   web/              dashboard (vanilla JS, no build step)

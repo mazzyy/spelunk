@@ -96,3 +96,36 @@ def test_move_rejects_destination_inside_home(fake_home):
     plan = a.plan("move", [os.path.join(fake_home, "Downloads/talk.mp4")], dest=os.path.join(fake_home, "Documents"))
     assert plan["dest"]["error"]
     assert plan["count"] == 0
+
+
+def test_moving_apps_to_exfat_warns(fake_home, drive, monkeypatch):
+    from spelunk import system
+    app = os.path.join(fake_home, "Applications", "Old.app", "Contents")
+    os.makedirs(app)
+    with open(os.path.join(app, "Info.plist"), "w") as f:
+        f.write("x")
+    monkeypatch.setattr(system, "filesystem", lambda p: "exfat")
+    a = make(fake_home)
+    plan = a.plan("move", [os.path.join(fake_home, "Applications", "Old.app")], dest=drive)
+    assert any("exfat" in w for w in plan["warnings"])
+    plan = a.plan("move", [os.path.join(fake_home, "Downloads/talk.mp4")], dest=drive)
+    assert not any("exfat" in w for w in plan["warnings"])
+
+
+def test_spelunk_never_removes_itself(fake_home):
+    a = make(fake_home)
+    me = os.path.join(fake_home, "Applications", "Spelunk.app")
+    os.makedirs(me)
+    a.self_bundle = me
+    assert a.check(me)["blocked"]
+    assert a.check(me + "/Contents")["blocked"]
+
+
+def test_trash_falls_back_when_finder_is_unavailable(fake_home, monkeypatch):
+    import subprocess
+    a = make(fake_home)
+    a.use_finder = True
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kw: (_ for _ in ()).throw(OSError("no osascript")))
+    src = os.path.join(fake_home, "Downloads/installer.dmg")
+    job = a.execute(a.plan("trash", [src])["id"], background=False)
+    assert job.state == "done" and os.path.exists(os.path.join(fake_home, ".Trash", "installer.dmg"))

@@ -42,8 +42,11 @@ What works:
 - Explore: squarified treemap + list with breadcrumbs.
 - Review list → plan dialog → job with progress → results. Bin, permanent delete, verified move to external drive with manifest.
 - Action log, Activity tab, Show in Finder.
+- **Unused apps tab (v0.2):** installed-app index (Info.plist, Spotlight "last opened", Team IDs via `codesign`), leftovers of removed apps across 11 `~/Library` locations grouped per app, apps not opened for 6 months with their data, uninstall = app + data in one plan.
+- **Duplicates tab (v0.2):** size → first/last 64 KB fingerprint → full SHA-256, user folders only, "keep oldest" selection.
+- **Bin through Finder (v0.2):** Put Back works and Finder asks for the admin password for apps in /Applications; falls back to moving into `~/.Trash`. Spelunk refuses to remove itself and warns when moving apps to exFAT/FAT drives.
 - **Downloadable Mac app:** `Spelunk.app` (PyInstaller + pywebview native window) and a DMG, built by `packaging/build_app.sh` and by GitHub Actions on every `v*` tag (`.github/workflows/release.yml`). Optional Developer ID signing + notarization when secrets are set. Full Disk Access detection with an "Open settings" button, and a first-run welcome screen in the app: nothing is scanned until the user chooses Full Disk Access (one switch, then automatic restart) or folder-by-folder macOS prompts. The choice is saved in `~/.spelunk/settings.json`.
-- 35 tests (scanner, rules, actions incl. failed-verification path, server security).
+- 49 tests (scanner, apps/leftovers, duplicates, rules, actions incl. failed-verification path, server security).
 - Verified on a real MacBook home folder: 518k files scanned in 72 s (Python, read-only).
 
 Known limitations (each is addressed below):
@@ -54,9 +57,9 @@ Known limitations (each is addressed below):
 | L2 | APFS clones are counted once per copy, so totals can exceed reality. | M1 |
 | L3 | Purgeable space and snapshot sizes aren't shown. | M1 |
 | L4 | No "last opened" info for apps/files (only modified date). | M1 |
-| L5 | Rules only know paths; leftovers of uninstalled apps aren't detected. | M2 |
-| L6 | No duplicate finder, no old-version detection. | M2 |
-| L7 | Bin is a plain rename into `~/.Trash`; Finder's "Put Back" isn't available. | M3 |
+| L5 | Rules only know paths. *(Leftovers of removed apps: done in v0.2.)* | M2 |
+| L6 | No old-version detection. *(Duplicate finder: done in v0.2.)* | M2 |
+| L7 | *(Done in v0.2: Bin goes through Finder with Put Back.)* | M3 |
 | L8 | No restore from the external-drive archive. | M3 |
 | L9 | Recommendations like `docker system prune` are copy-paste, not one click. | M3 |
 | L10 | exFAT cluster overhead can make moved data 2-4x larger on the drive. | M3 |
@@ -105,12 +108,12 @@ Goal: Spelunk recognises leftovers, duplicates and old versions, not just known 
 Tasks:
 
 1. **Rule schema + validation.** Add `rules/schema.json` (JSON Schema) and a stdlib validator in `tests/test_knowledge.py` (no `jsonschema` dependency at runtime). Fields to add: `min_bytes` (only suggest above this), `tags`, `docs_url`, `commands` (list of `{label, cmd, needs_admin}`), `app_bundle_ids` (which apps own this rule).
-2. **Installed-app index.** Build `{bundle_id: app_path}` from `/Applications`, `~/Applications`, `/System/Applications` (read `Contents/Info.plist` with `plistlib`) plus `mdfind "kMDItemContentType == 'com.apple.application-bundle'"`.
-3. **Orphan detection.** For `~/Library/{Application Support,Containers,Group Containers,Caches,Preferences,Saved Application State,HTTPStorages,Logs}/*`: derive the owner (bundle id or team-id prefix like `UBF8T346G9.` = Microsoft) and mark entries whose app isn't installed as "Leftover of an app you removed — safe". Real example this was built from: `group.com.surfshark...` after Surfshark was uninstalled.
-4. **App uninstaller.** Selecting an app offers "Uninstall app + its N leftovers (X GB)" as one plan. Apps in `/Applications` owned by root (App Store) need admin: show the exact `sudo rm -rf` command instead of failing.
+2. *(Done in v0.2.)* **Installed-app index.** Build `{bundle_id: app_path}` from `/Applications`, `~/Applications`, `/System/Applications` (read `Contents/Info.plist` with `plistlib`) plus `mdfind "kMDItemContentType == 'com.apple.application-bundle'"`.
+3. *(Done in v0.2.)* **Orphan detection.** For `~/Library/{Application Support,Containers,Group Containers,Caches,Preferences,Saved Application State,HTTPStorages,Logs}/*`: derive the owner (bundle id or team-id prefix like `UBF8T346G9.` = Microsoft) and mark entries whose app isn't installed as "Leftover of an app you removed — safe". Real example this was built from: `group.com.surfshark...` after Surfshark was uninstalled.
+4. *(Done in v0.2, via Finder.)* **App uninstaller.** Selecting an app offers "Uninstall app + its N leftovers (X GB)" as one plan. Apps in `/Applications` owned by root (App Store) need admin: show the exact `sudo rm -rf` command instead of failing.
 5. **Content-aware detectors** (`spelunk/detectors.py`): Rust `target/` (sibling `Cargo.toml`), Xcode `build/`, Unity `Library/`, Gradle `build/`, `.terraform/`, CMake build dirs, Jupyter checkpoints. Each detector returns a synthetic rule.
 6. **Old versions.** VS Code / Cursor extension folders with multiple versions (keep the one referenced by `extensions.json`), `~/.nvm/versions/node/*` not used by any `.nvmrc`, Homebrew (`brew cleanup -n` output parsed), LM Studio / llama.cpp runtime versions.
-7. **Duplicate finder.** Group files ≥ 10 MB by size → first 64 KB hash → full SHA-256. Show groups; user picks which copy to keep. Never auto-select inside app bundles or libraries.
+7. *(Done in v0.2.)* **Duplicate finder.** Group files ≥ 10 MB by size → first 64 KB hash → full SHA-256. Show groups; user picks which copy to keep. Never auto-select inside app bundles or libraries.
 8. **"Explain with AI" (opt-in).** For unknown folders ≥ 500 MB: send only the path and the names of the top 20 children (no contents) to a local Ollama model or an API key the user provides. Show the answer clearly labelled "AI guess — verify before acting" and offer to save it as a draft rule the user can submit upstream.
 
 Acceptance criteria:
@@ -135,7 +138,7 @@ Goal: every recommendation can be acted on from the UI, and every action can be 
 
 Tasks:
 
-1. **Finder Bin with Put Back.** Use `osascript -e 'tell application "Finder" to delete POSIX file "<path>"'` (needs Automation permission; ask once) so items can be restored with Put Back. Fall back to the current rename. Add "Empty Bin" (with confirmation and size).
+1. *(Done in v0.2; still to do: "Empty Bin" button.)* **Finder Bin with Put Back.** Use `osascript -e 'tell application "Finder" to delete POSIX file "<path>"'` (needs Automation permission; ask once) so items can be restored with Put Back. Fall back to the current rename. Add "Empty Bin" (with confirmation and size).
 2. **Archive browser + restore.** New "Archive" tab reading `Spelunk Archive/manifest.jsonl` from connected drives: what was moved, when, from where. "Restore" copies back (verified) to the original path if free.
 3. **Safe command runner.** Rules may declare `commands` with an id. `POST /api/run {rule_id, command_id}` runs only commands from the rules file (never user/AI-supplied strings), streams output, and logs it. Initial set: `brew cleanup --prune=all`, `brew autoremove`, `npm cache clean --force`, `pnpm store prune`, `uv cache clean`, `pip cache purge`, `conda clean -a -y`, `docker system prune -a -f` (only if Docker is running), `xcrun simctl delete unavailable`.
 4. **Relocation recipes.** One-click "Keep this on the external drive" for: Docker disk image location (guide), Ollama (`OLLAMA_MODELS` via `launchctl setenv` + LaunchAgent), Hugging Face (`HF_HOME`), LM Studio models folder (guide), pnpm `store-dir`, iPhone backups (symlink with warning), Photos library (guide only). Each recipe checks the drive is APFS/HFS where needed and warns that the drive must be connected.

@@ -18,17 +18,36 @@ import json
 import os
 import shutil
 import stat
+import subprocess
+import sys
 import threading
 import time
 import uuid
 from typing import Dict, List, Optional
 
+from . import system
 from .knowledge import KnowledgeBase, hard_denied
 from .scanner import SMALL_BUCKET, allocated_size
 
 PLAN_TTL = 600  # seconds
 ARCHIVE_DIR = "Spelunk Archive"
 KINDS = ("trash", "delete", "move")
+NO_APP_FILESYSTEMS = ("exfat", "msdos", "fat32", "ntfs")
+
+# Moving an item to the Bin through Finder keeps "Put Back" working and lets
+# macOS ask for an administrator password when an app in /Applications needs it.
+FINDER_TRASH = """on run argv
+  set target to POSIX file (item 1 of argv)
+  tell application "Finder" to delete target
+end run"""
+
+
+def running_bundle() -> Optional[str]:
+    """Path of Spelunk.app when running as the app (it must never remove itself)."""
+    exe = os.path.realpath(sys.executable)
+    if ".app/Contents/MacOS/" in exe:
+        return exe.split("/Contents/MacOS/")[0]
+    return None
 
 
 def measure(path: str) -> Dict[str, int]:
@@ -112,6 +131,8 @@ class Actions:
         self.jobs: Dict[str, Job] = {}
         self._lock = threading.Lock()
         self.on_finish = None  # optional callback(job) after a job ends
+        self.use_finder = system.IS_MAC
+        self.self_bundle = running_bundle()
 
     # ----------------------------------------------------------- checking
     def check(self, path: str) -> dict:
@@ -139,6 +160,8 @@ class Actions:
                 item["blocked"] = "Spelunk never touches this: " + (info.get("what") or "")
             elif path == self.trash_dir or path.startswith(self.trash_dir + "/"):
                 item["blocked"] = "Already in the Bin. Empty the Bin in Finder."
+            elif self.self_bundle and (path == self.self_bundle or path.startswith(self.self_bundle + "/")):
+                item["blocked"] = "Spelunk can't remove itself. Quit it and drag it to the Bin."
         return item
 
     # ------------------------------------------------------------- planning
@@ -188,6 +211,11 @@ class Actions:
             plan["warnings"].extend(plan["dest"]["warnings"])
             if plan["dest"]["error"]:
                 plan["count"] = 0
+            fs = plan["dest"].get("filesystem") or ""
+            if fs in NO_APP_FILESYSTEMS and any(".app" in i["path"] for i in ok):
+                plan["warnings"].append(
+                    "Apps don't open from %s drives: macOS adds hidden ._ files that break their code "
+                    "signature. Keep apps on your Mac, or remove the ones you don't use." % fs)
         with self._lock:
             self.plans[plan["id"]] = plan
         return plan
@@ -209,6 +237,7 @@ class Actions:
             return info
         free = shutil.disk_usage(dest).free
         info["free"] = free
+        info["filesystem"] = system.filesystem(dest)
         info["archive"] = os.path.join(dest, ARCHIVE_DIR)
         if total * 1.2 > free:
             info["error"] = "Not enough free space on the destination drive."
@@ -287,6 +316,13 @@ class Actions:
 
     # --------------------------------------------------------------- trash
     def _trash(self, path: str) -> dict:
+        if self.use_finder:
+            try:
+                r = subprocess.run(["osascript", "-e", FINDER_TRASH, path], capture_output=True, timeout=300)
+                if r.returncode == 0 and not os.path.lexists(path):
+                    return {"ok": True, "to": "Bin (Put Back available in Finder)", "freed": 0}
+            except (OSError, subprocess.SubprocessError):
+                pass  # Finder unavailable or not allowed: fall back to moving it ourselves
         os.makedirs(self.trash_dir, exist_ok=True)
         name = os.path.basename(path)
         target = os.path.join(self.trash_dir, name)

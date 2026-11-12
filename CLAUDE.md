@@ -43,7 +43,9 @@ packaging/build_app.sh               # build dist/Spelunk.app + DMG (macOS only)
 | `spelunk/system.py` | `diskutil`/`tmutil` wrappers, external drives, overview math |
 | `spelunk/knowledge.py` | Rule matching (glob, specificity, inheritance, protective override), hard deny |
 | `spelunk/rules/macos.json` | The knowledge base |
-| `spelunk/actions.py` | Plans, jobs, trash/delete/move, manifest, action log |
+| `spelunk/apps.py` | Installed apps, last opened, leftovers of removed apps, app data for uninstall |
+| `spelunk/duplicates.py` | Duplicate finder (background job) |
+| `spelunk/actions.py` | Plans, jobs, trash (Finder) / delete / move, manifest, action log |
 | `spelunk/server.py` | HTTP API + recommendations |
 | `spelunk/web/` | Dashboard |
 

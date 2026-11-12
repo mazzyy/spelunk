@@ -543,12 +543,141 @@ $("confirmBtn").addEventListener("click", async () => {
   for (const r of ok) state.queue.delete(r.path);
   currentPlan = null;
   renderQueue();
-  await Promise.all([loadOverview(), loadSuggestions(), loadExplore(state.explorePath), loadHistory()]);
+  const refreshes = [loadOverview(), loadSuggestions(), loadExplore(state.explorePath), loadHistory()];
+  if (!$("pane-apps").classList.contains("hidden")) refreshes.push(loadApps());
+  if (!$("pane-dups").classList.contains("hidden")) refreshes.push(loadDuplicates());
+  await Promise.all(refreshes);
 });
 $("planDialog").addEventListener("close", () => {
   $("cancelBtn").classList.remove("hidden");
   $("confirmBtn").onclick = null;
   $("confirmBtn").classList.remove("danger");
+});
+
+// ------------------------------------------------------------ unused apps
+function ageText(days) {
+  if (days === null || days === undefined) return "No record of being opened";
+  if (days < 60) return `Last opened ${days} days ago`;
+  if (days < 730) return `Last opened ${Math.round(days / 30)} months ago`;
+  return `Last opened ${Math.round(days / 365)} years ago`;
+}
+function whereList(items) {
+  return h("details", { class: "where", onclick: (e) => e.stopPropagation() },
+    h("summary", { text: `Show ${items.length} location${items.length === 1 ? "" : "s"}` }),
+    h("ul", {}, items.map((i) => h("li", {},
+      h("span", { class: "mono", text: shortPath(i.path, state.home) }),
+      h("span", { class: "mono", text: human(i.size) })))));
+}
+function multiCheck(paths, label) {
+  const cb = h("input", { type: "checkbox", "aria-label": label });
+  cb.checked = paths.length > 0 && paths.every((p) => state.queue.has(p.path));
+  cb.addEventListener("click", (e) => {
+    e.stopPropagation();
+    for (const p of paths) e.target.checked ? addToQueue(p) : removeFromQueue(p.path);
+  });
+  return cb;
+}
+const asItem = (path, size, name) => ({ path, size, name: name || path.split("/").pop(), info: { safety: "review" } });
+
+async function loadApps() {
+  const box = $("appsBox");
+  if (!state.scanDone) return;
+  box.replaceChildren(h("p", { class: "hint", text: "Looking for leftovers and unused apps…" }));
+  let data;
+  try { data = await api("/api/apps"); } catch (e) { box.replaceChildren(h("p", { class: "hint", text: e.message })); return; }
+  box.replaceChildren();
+
+  // Leftovers of removed apps
+  const lt = data.leftovers.reduce((s, g) => s + g.size, 0);
+  const lhead = h("div", { class: "group-head" }, badge("review"), h("span", { text: "Leftovers from apps you removed" }),
+    h("span", { class: "sum", text: human(lt) }));
+  if (data.leftovers.length) {
+    lhead.append(h("button", { class: "btn small", type: "button", text: "Add all to review",
+      onclick: () => { data.leftovers.forEach((g) => g.items.forEach((i) => addToQueue(asItem(i.path, i.size, `${g.name}: ${i.path.split("/").pop()}`)))); loadApps(); } }));
+  }
+  const lrows = data.leftovers.length ? data.leftovers.map((g) => {
+    const items = g.items.map((i) => asItem(i.path, i.size, `${g.name}: ${i.path.split("/").pop()}`));
+    return h("div", { class: "row tall" },
+      multiCheck(items, `Add ${g.name} leftovers to review list`),
+      h("div", {},
+        h("div", { class: "name", text: g.name }),
+        h("div", { class: "sub", text: `No installed app owns this · ${g.items.length} place${g.items.length === 1 ? "" : "s"} in Library · ${ago(g.mtime)}` }),
+        whereList(g.items)),
+      h("div", { class: "size", text: human(g.size) }));
+  }) : [h("p", { class: "hint", text: "No leftovers found. (With Full Disk Access Spelunk can check more places.)" })];
+  box.append(h("div", { class: "group" }, lhead, h("div", { class: "rows" }, lrows)));
+
+  // Apps not opened for months
+  const ut = data.unused.reduce((s, a) => s + a.size + a.data_size, 0);
+  const uhead = h("div", { class: "group-head" }, badge("review"),
+    h("span", { text: `Apps you haven't opened in ${Math.round(data.unused_after_days / 30)} months` }),
+    h("span", { class: "sum", text: human(ut) }));
+  const urows = data.unused.length ? data.unused.map((a) => {
+    const items = [asItem(a.path, a.size, a.name + ".app"), ...a.data.map((d) => asItem(d.path, d.size, `${a.name}: ${d.path.split("/").pop()}`))];
+    return h("div", { class: "row tall" },
+      multiCheck(items, `Uninstall ${a.name} with its data`),
+      h("div", {},
+        h("div", { class: "name", text: a.name + (a.version ? ` ${a.version}` : "") }),
+        h("div", { class: "sub", text: `${ageText(a.days_unused)} · app ${human(a.size)}${a.data.length ? ` + ${human(a.data_size)} of its data` : ""}` }),
+        a.data.length ? whereList([{ path: a.path, size: a.size }, ...a.data]) : null),
+      h("div", { class: "size", text: human(a.size + a.data_size) }));
+  }) : [h("p", { class: "hint", text: "Every app has been opened recently." })];
+  box.append(h("div", { class: "group" }, uhead, h("div", { class: "rows" }, urows)));
+}
+
+// ------------------------------------------------------------- duplicates
+let dupTimer = null;
+async function loadDuplicates() {
+  let d;
+  try { d = await api("/api/duplicates"); } catch (e) { return; }
+  renderDuplicates(d);
+  clearTimeout(dupTimer);
+  if (d.state === "running") dupTimer = setTimeout(loadDuplicates, 700);
+}
+function renderDuplicates(d) {
+  const status = $("dupStatus");
+  $("dupStart").disabled = d.state === "running" || !state.scanDone;
+  $("dupKeepOldest").classList.toggle("hidden", !(d.groups && d.groups.length));
+  if (d.state === "idle") { status.textContent = state.scanDone ? "" : "Waiting for the scan to finish…"; $("dupList").replaceChildren(); return; }
+  if (d.state === "running") {
+    status.textContent = `Comparing files… ${human(d.done)} of ${human(d.total)} read` + (d.current ? ` · ${shortPath(d.current, state.home)}` : "");
+  } else if (d.state === "failed") {
+    status.textContent = `Search failed: ${d.error}`;
+  } else {
+    status.textContent = d.groups.length
+      ? `${d.groups.length} sets of identical files · ${human(d.wasted)} could be freed by keeping one copy of each (${d.elapsed}s)`
+      : `No duplicates bigger than ${human(d.min_bytes)} found (${d.elapsed}s).`;
+  }
+  $("dupList").replaceChildren(...(d.groups || []).map((g) => h("div", { class: "group dup" },
+    h("div", { class: "group-head" },
+      h("span", { text: g.name }),
+      h("span", { class: "sum", text: `${g.count} copies × ${human(g.size)} · ${human(g.wasted)} extra` }),
+      h("button", { class: "btn small", type: "button", text: "Keep oldest",
+        onclick: () => { g.files.slice(1).forEach((f) => addToQueue(asItem(f.path, g.size))); renderDuplicates(d); } })),
+    h("div", { class: "rows" }, g.files.map((f, i) => {
+      const cb = h("input", { type: "checkbox", "aria-label": `Add ${f.path} to review list` });
+      cb.checked = state.queue.has(f.path);
+      cb.addEventListener("click", (e) => { e.target.checked ? addToQueue(asItem(f.path, g.size)) : removeFromQueue(f.path); });
+      return h("div", { class: "row", "data-path": f.path },
+        cb,
+        h("div", {},
+          h("div", { class: "name", text: shortPath(f.path, state.home) }),
+          h("div", { class: "sub", text: (i === 0 ? "Oldest copy · " : "") + ago(f.mtime) })),
+        h("div", { class: "size", text: human(g.size) }));
+    })))));
+}
+$("dupStart").addEventListener("click", async () => {
+  try {
+    await api("/api/duplicates", { min_bytes: Number($("dupMin").value) });
+  } catch (e) { toast(e.message); return; }
+  loadDuplicates();
+});
+$("dupKeepOldest").addEventListener("click", async () => {
+  const d = await api("/api/duplicates");
+  let n = 0;
+  for (const g of d.groups) for (const f of g.files.slice(1)) { addToQueue(asItem(f.path, g.size)); n++; }
+  toast(`Added ${n} extra copies to the review list. The oldest copy of each stays.`);
+  renderDuplicates(d);
 });
 
 // --------------------------------------------------------------- history
@@ -565,8 +694,10 @@ async function loadHistory() {
 // ------------------------------------------------------------------ tabs
 document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
   document.querySelectorAll(".tab").forEach((t) => { t.classList.toggle("active", t === tab); t.setAttribute("aria-selected", t === tab); });
-  for (const name of ["suggest", "explore", "history"]) $(`pane-${name}`).classList.toggle("hidden", tab.dataset.tab !== name);
+  for (const name of ["suggest", "apps", "dups", "explore", "history"]) $(`pane-${name}`).classList.toggle("hidden", tab.dataset.tab !== name);
   if (tab.dataset.tab === "explore" && state.scanDone) loadExplore(state.explorePath);
+  if (tab.dataset.tab === "apps") loadApps();
+  if (tab.dataset.tab === "dups") loadDuplicates();
   if (tab.dataset.tab === "history") loadHistory();
 }));
 

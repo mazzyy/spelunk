@@ -158,6 +158,11 @@ def external_volumes() -> List[Dict]:
     return result
 
 
+def filesystem(path: str) -> str:
+    """Filesystem type of the volume holding ``path`` (e.g. apfs, exfat); '' if unknown."""
+    return _filesystem(path)
+
+
 def _filesystem(path: str) -> str:
     if not IS_MAC:
         return ""

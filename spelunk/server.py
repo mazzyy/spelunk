@@ -17,8 +17,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__, system
+from . import __version__, apps, system
 from .actions import Actions
+from .duplicates import DuplicateSearch
 from .knowledge import KnowledgeBase
 from .scanner import SMALL_BUCKET, Node, ScanProgress, Scanner, find, remove
 
@@ -48,6 +49,10 @@ class App:
         self.relaunch = None  # set by desktop.py when the app can restart itself
         self.settings_path = os.path.join(self.home, ".spelunk", "settings.json")
         self.settings = self._load_settings()
+        self.duplicates = DuplicateSearch()
+        self.app_dirs = apps.app_dirs(self.home)
+        self._apps_cache: Optional[dict] = None
+        self._teams: Optional[Dict[str, str]] = None
 
     # ----------------------------------------------------------- onboarding
     def _load_settings(self) -> dict:
@@ -94,6 +99,7 @@ class App:
         self.progress = ScanProgress()
         self.progress.running = True
         self._overview_cache = None
+        self._apps_cache = None
         threading.Thread(target=self._scan, daemon=True).start()
         return True
 
@@ -192,16 +198,39 @@ class App:
         out.sort(key=lambda x: x["size"], reverse=True)
         return out[:limit]
 
-    def _after_job(self, job) -> None:  # noqa: ANN001
+    def apps_report(self) -> dict:
+        """Leftovers of removed apps and apps not opened for months (cached)."""
+        if self._apps_cache is not None:
+            return self._apps_cache
+        installed = apps.installed_apps(self.app_dirs)
+        apps.last_used(installed)
+        if self._teams is None:
+            self._teams = apps.team_ids(installed)
+        sizes: Dict[str, int] = {}
         with self.lock:
-            if self.tree is None:
-                return
-            for r in job.results:
-                if r.get("ok"):
-                    n = find(self.tree, r["path"])
+            if self.tree is not None:
+                for a in installed:
+                    n = find(self.tree, a["path"])
+                    if n is not None:
+                        sizes[a["path"]] = n.size
+        leftovers = apps.find_leftovers(self.home, installed, self._teams, min_group_bytes=100_000)
+        unused = apps.unused_apps(self.home, installed, sizes)
+        report = {"leftovers": leftovers, "unused": unused, "installed": len(installed),
+                  "unused_after_days": apps.UNUSED_AFTER_DAYS}
+        self._apps_cache = report
+        return report
+
+    def _after_job(self, job) -> None:  # noqa: ANN001
+        removed = [r["path"] for r in job.results if r.get("ok")]
+        with self.lock:
+            if self.tree is not None:
+                for path in removed:
+                    n = find(self.tree, path)
                     if n is not None:
                         remove(n)
         self._overview_cache = None
+        self._apps_cache = None
+        self.duplicates.forget(removed)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -320,6 +349,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(job.to_dict()) if job else self._error(404, "no such job")
         if path == "/api/history":
             return self._json({"items": app.actions.history()})
+        if path == "/api/apps":
+            if app.tree is None:
+                return self._error(409, "Scan first")
+            return self._json(app.apps_report())
+        if path == "/api/duplicates":
+            return self._json(app.duplicates.snapshot())
         return self._error(404, "unknown endpoint")
 
     def _api_post(self, path: str, body: dict) -> None:
@@ -347,6 +382,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": system.reveal_in_finder(body.get("path", ""))})
         if path == "/api/open-privacy-settings":
             return self._json({"ok": system.open_full_disk_access_settings()})
+        if path == "/api/duplicates":
+            if app.tree is None:
+                return self._error(409, "Scan first")
+            try:
+                min_bytes = int(body.get("min_bytes", 10_000_000))
+            except (TypeError, ValueError):
+                return self._error(400, "min_bytes must be a number")
+            with app.lock:
+                started = app.duplicates.start(app.tree, app.home, max(1_000_000, min_bytes))
+            return self._json({"started": started})
         if path == "/api/onboarding":
             choice = body.get("choice")
             if choice not in ("ask", "full-disk-access"):

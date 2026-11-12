@@ -158,3 +158,17 @@ def test_onboarding_endpoint(server):
     assert status == 400
     status, data = call(port, "POST", "/api/relaunch", {})
     assert status == 409  # not running as a bundled app
+
+
+def test_apps_and_duplicates_endpoints(server, fake_home):
+    port, app = server
+    status, data = call(port, "GET", "/api/apps")
+    assert status == 200 and "leftovers" in data and "unused" in data
+    status, d = call(port, "POST", "/api/duplicates", {"min_bytes": 1_000_000})
+    assert status == 200
+    for _ in range(100):
+        status, d = call(port, "GET", "/api/duplicates")
+        if d["state"] != "running":
+            break
+        time.sleep(0.05)
+    assert d["state"] == "done"
