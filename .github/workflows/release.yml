@@ -26,7 +26,7 @@ permissions:
 
 jobs:
   macos:
-    runs-on: macos-14  # Apple silicon (arm64)
+    runs-on: macos-latest  # Apple silicon (arm64)
     env:
       HAS_CERT: ${{ secrets.MACOS_CERT_P12 != '' }}
     steps:
