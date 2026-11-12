@@ -116,6 +116,8 @@ main { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
 .notes { margin-top: 12px; display: grid; gap: 6px; font-size: 13px; }
 .note { padding: 8px 10px; border-radius: 8px; background: var(--review-bg); }
 .note.info { background: var(--keep-bg); }
+.note.action { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: var(--keep-bg); }
+.note.action .btn { flex-shrink: 0; }
 
 /* ------------------------------------------------------------ layout */
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; margin-top: 16px; align-items: start; }

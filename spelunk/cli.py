@@ -73,6 +73,13 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_app(args: argparse.Namespace) -> int:
+    from .desktop import main as desktop_main
+
+    extra = ["--no-window"] if args.no_window else []
+    return desktop_main(extra + ["--port", str(args.port)])
+
+
 def _cmd_explain(args: argparse.Namespace) -> int:
     kb = KnowledgeBase.load()
     path = os.path.abspath(os.path.expanduser(args.path))
@@ -102,6 +109,11 @@ def main(argv=None) -> int:  # noqa: ANN001
     e = sub.add_parser("explain", help="explain what a path is and whether it's safe to remove")
     e.add_argument("path")
     e.set_defaults(func=_cmd_explain)
+
+    a = sub.add_parser("app", help="open Spelunk in its own window (needs pywebview; falls back to the browser)")
+    a.add_argument("--no-window", action="store_true")
+    a.add_argument("--port", type=int, default=0)
+    a.set_defaults(func=_cmd_app)
 
     args = p.parse_args(argv)
     if not getattr(args, "func", None):

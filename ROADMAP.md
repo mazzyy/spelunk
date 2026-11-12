@@ -24,7 +24,7 @@ Target users, in order: developers on 256/512 GB MacBooks (Docker, Homebrew, nod
 
 ## 2. Where we are: v0.1 (MVP, done)
 
-Python standard library + local web dashboard.
+Python standard library + local web dashboard, shipped as a downloadable Mac app.
 
 ```
 browser (127.0.0.1, token)  ──HTTP──▶  server.py ──▶ scanner.py   (size tree)
@@ -42,6 +42,7 @@ What works:
 - Explore: squarified treemap + list with breadcrumbs.
 - Review list → plan dialog → job with progress → results. Bin, permanent delete, verified move to external drive with manifest.
 - Action log, Activity tab, Show in Finder.
+- **Downloadable Mac app:** `Spelunk.app` (PyInstaller + pywebview native window) and a DMG, built by `packaging/build_app.sh` and by GitHub Actions on every `v*` tag (`.github/workflows/release.yml`). Optional Developer ID signing + notarization when secrets are set. Full Disk Access detection with an "Open settings" button.
 - 31 tests (scanner, rules, actions incl. failed-verification path, server security).
 - Verified on a real MacBook home folder: 518k files scanned in 72 s (Python, read-only).
 
@@ -60,7 +61,7 @@ Known limitations (each is addressed below):
 | L9 | Recommendations like `docker system prune` are copy-paste, not one click. | M3 |
 | L10 | exFAT cluster overhead can make moved data 2-4x larger on the drive. | M3 |
 | L11 | Python scanner: ~1 min on a big disk, high memory with millions of files. | M4 |
-| L12 | It's a terminal tool + browser tab, not a Mac app. | M4 |
+| L12 | The app is a packaged Python app (Apple silicon only, ad-hoc signed until a Developer ID is added). | M4 |
 
 ---
 

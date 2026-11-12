@@ -44,6 +44,7 @@ class App:
         self.lock = threading.Lock()
         self.scan_error: Optional[str] = None
         self._overview_cache: Optional[dict] = None
+        self.app_mode = False  # True when running as Spelunk.app (texts say "Spelunk", not "your terminal")
 
     # ------------------------------------------------------------- scanning
     def start_scan(self, roots: Optional[List[str]] = None) -> bool:
@@ -102,6 +103,8 @@ class App:
             ov = system.overview(scanned)
             ov["roots"] = self.roots
             ov["denied_roots"] = [r.path for r in (self.tree.children if self.tree else []) if r.denied]
+            ov["full_disk_access"] = system.full_disk_access(self.home)
+            ov["app_mode"] = self.app_mode
             if not self.progress.running:
                 self._overview_cache = ov
             return ov
@@ -298,6 +301,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(job.to_dict())
         if path == "/api/reveal":
             return self._json({"ok": system.reveal_in_finder(body.get("path", ""))})
+        if path == "/api/open-privacy-settings":
+            return self._json({"ok": system.open_full_disk_access_settings()})
         return self._error(404, "unknown endpoint")
 
 

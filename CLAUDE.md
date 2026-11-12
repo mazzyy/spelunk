@@ -15,7 +15,9 @@ Spelunk is a tool that **deletes and moves files on people's computers**. Treat 
 ## Conventions
 
 - Python **3.9+** (macOS's bundled `python3` is 3.9). Use `from __future__ import annotations`; no `match`, no `X | Y` at runtime.
-- **Standard library only** in `spelunk/`. Dev-only deps (pytest) are fine in tests.
+- **Standard library only** in `spelunk/`. Dev-only deps (pytest) are fine in tests. The one exception is `pywebview`, imported lazily in `desktop.py` and bundled only inside `Spelunk.app`; everything must still work without it.
+- The Mac app is built by `packaging/build_app.sh` (PyInstaller, `packaging/spelunk.spec`). Data files are found via `os.path.dirname(__file__)`, which works both from source and when frozen; keep it that way and add any new data folder to the spec's `datas`.
+- Releases: `.github/workflows/release.yml` builds the DMG on `v*` tags. Keep `__version__` (spelunk/__init__.py) and `pyproject.toml` in sync.
 - Web UI: vanilla JS + CSS, no build step, no CDN (the CSP is `default-src 'self'`).
 - Sizes are **allocated bytes** (`st_blocks * 512`), shown with decimal units like Finder.
 - Every new rule needs `id, match, title, category, safety, what, if_removed, action` and a test in `tests/test_knowledge.py` for anything non-trivial.
@@ -28,6 +30,8 @@ python3 -m pytest -q                 # all tests
 python3 -m spelunk                   # run the dashboard
 python3 -m spelunk scan ~ --top 30   # terminal report
 python3 -m spelunk explain <path>    # check a rule
+python3 -m spelunk app               # app mode (native window if pywebview is installed)
+packaging/build_app.sh               # build dist/Spelunk.app + DMG (macOS only)
 ```
 
 ## Where things are

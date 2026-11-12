@@ -1,0 +1,3 @@
+# Only needed to build Spelunk.app. Spelunk itself has no dependencies.
+pyinstaller==6.16.0
+pywebview==6.1

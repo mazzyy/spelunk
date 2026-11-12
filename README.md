@@ -18,7 +18,17 @@ Spelunk scans your disk, explains every big item in plain language, tells you wh
 - **Logs everything** to `~/.spelunk/actions.jsonl`.
 - **Stays local.** No network, no telemetry, no account. The dashboard only listens on `127.0.0.1` with a random per-launch token.
 
-## Quick start
+## Download
+
+1. Download **`Spelunk-<version>-arm64.dmg`** from the [latest release](https://github.com/mazzyy/spelunk/releases/latest).
+2. Open the DMG and drag **Spelunk** into **Applications**.
+3. Open Spelunk. The first scan starts right away.
+
+**First launch:** until releases are notarized by Apple, macOS blocks apps from unknown developers. Open **System Settings › Privacy & Security**, scroll down to *"Spelunk was blocked…"*, click **Open Anyway** and confirm. You only do this once. (Terminal alternative: `xattr -dr com.apple.quarantine /Applications/Spelunk.app`)
+
+The app is built for Apple silicon Macs (M1 and later). On an Intel Mac, run it from source (below).
+
+## Run from source
 
 Requires macOS and Python 3.9+ (the `python3` that comes with Xcode Command Line Tools is fine). No dependencies.
 
@@ -40,11 +50,34 @@ python3 -m spelunk explain ~/Library/Caches/com.microsoft.VSCode.ShipIt
 
 ### See more: grant Full Disk Access
 
-macOS blocks apps from reading Mail, Messages, Safari data, parts of `~/Library` and more. To let Spelunk measure them, give the app you run it from (Terminal, iTerm, VS Code…) Full Disk Access:
+macOS blocks apps from reading Mail, Messages, Safari data, parts of `~/Library` and more. Spelunk detects this and shows an **Open Full Disk Access settings** button.
 
-**System Settings › Privacy & Security › Full Disk Access › +** and add your terminal, then restart it and rescan.
+- **Using the app:** click **+**, choose **Spelunk** in Applications, switch it on, then quit and reopen Spelunk.
+- **Running from source:** add the app you run it from (Terminal, iTerm, VS Code…) and restart it.
 
 Spelunk still works without it; those folders are shown as "no access" and counted under *Hidden*.
+
+## Build the app yourself
+
+On a Mac:
+
+```bash
+packaging/build_app.sh
+open dist/Spelunk.app
+```
+
+This creates `dist/Spelunk.app` and a drag-to-install `dist/Spelunk-<version>-<arch>.dmg`. The build uses PyInstaller and pywebview (installed into a throwaway `.build-venv`); Spelunk itself still has no dependencies. Build on an Intel Mac to get an Intel app.
+
+## Releasing (maintainers)
+
+Pushing a version tag builds the DMG on GitHub's Mac runners and attaches it to a GitHub Release:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+To remove the "blocked app" step for users, add an Apple Developer ID certificate and notarization credentials as repository secrets; the workflow signs and notarizes automatically when they're present. See the comments at the top of `.github/workflows/release.yml`.
 
 ## How safety works
 
@@ -68,7 +101,10 @@ spelunk/
   rules/macos.json  the knowledge base (add rules here!)
   actions.py        plan / execute: Bin, delete, verified move
   server.py         local API (token + host check)
+  desktop.py        app entry: native window (pywebview) or browser fallback
   web/              dashboard (vanilla JS, no build step)
+packaging/          Spelunk.app recipe: PyInstaller spec, icon, build_app.sh
+.github/workflows/  tests on every push; DMG release on every v* tag
 tests/              pytest suite (runs on macOS and Linux)
 ROADMAP.md          where this is going, in detail
 CLAUDE.md           rules for AI coding agents working on this repo

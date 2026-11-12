@@ -212,6 +212,41 @@ def overview(scanned: Dict[str, int]) -> Dict:
     }
 
 
+def full_disk_access(home: Optional[str] = None) -> Optional[bool]:
+    """Does this process have Full Disk Access? ``None`` when not on macOS.
+
+    The per-user TCC database is only readable with Full Disk Access, which
+    makes it a reliable probe that doesn't touch any personal data.
+    """
+    if not IS_MAC:
+        return None
+    h = home or os.path.expanduser("~")
+    probe = os.path.join(h, "Library", "Application Support", "com.apple.TCC", "TCC.db")
+    try:
+        with open(probe, "rb"):
+            return True
+    except PermissionError:
+        return False
+    except OSError:
+        pass
+    # Fallback: Safari's folder is protected the same way.
+    try:
+        os.listdir(os.path.join(h, "Library", "Safari"))
+        return True
+    except PermissionError:
+        return False
+    except OSError:
+        return None
+
+
+def open_full_disk_access_settings() -> bool:
+    """Open System Settings at Privacy & Security > Full Disk Access."""
+    if not IS_MAC:
+        return False
+    url = "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+    return _run(["open", url]) is not None
+
+
 def reveal_in_finder(path: str) -> bool:
     if not IS_MAC or not os.path.lexists(path):
         return False

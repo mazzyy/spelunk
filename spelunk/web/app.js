@@ -153,11 +153,23 @@ async function loadOverview() {
     h("i", { style: { background: s.color } }), h("span", { class: "lbl", text: s.label }), h("strong", { text: human(s.bytes) }))));
 
   const notes = [];
+  if (ov.full_disk_access === false) {
+    const how = ov.app_mode
+      ? "Click +, choose Spelunk in Applications, switch it on, then quit and reopen Spelunk."
+      : "Add the app you started Spelunk from (Terminal, iTerm, VS Code…), restart it, then rescan.";
+    notes.push(h("div", { class: "note action" },
+      h("div", {},
+        h("strong", { text: "Let Spelunk see everything. " }),
+        "macOS hides Mail, Messages, Safari and parts of Library until you allow Full Disk Access. ", how),
+      h("button", { class: "btn small", type: "button", text: "Open Full Disk Access settings",
+        onclick: () => api("/api/open-privacy-settings", {}).catch((e) => toast(e.message)) })));
+  }
   if (ov.hidden > 1e9) {
     notes.push(h("div", { class: "note" },
-      h("strong", { text: `${human(ov.hidden)} is hidden from Spelunk. ` }),
-      "This is usually protected app data, local snapshots or system files. Give your terminal Full Disk Access ",
-      "(System Settings › Privacy & Security › Full Disk Access) and rescan to see more."));
+      h("strong", { text: `${human(ov.hidden)} couldn't be measured. ` }),
+      ov.full_disk_access === false
+        ? "Most of it will appear once Full Disk Access is on."
+        : "This is usually system files, local snapshots or other users' data that need admin rights to read."));
   }
   for (const snap of ov.snapshots || []) {
     if (snap.kind === "os") continue;
@@ -355,7 +367,7 @@ function select(n) {
       h("code", { text: info.how }),
       h("button", { class: "btn small", type: "button", text: "Copy", onclick: () => copy(info.how) })));
   }
-  if (n.denied) dl.append(h("dt", { text: "Access" }), h("dd", { text: "macOS blocked Spelunk from reading this folder. Grant Full Disk Access to your terminal and rescan." }));
+  if (n.denied) dl.append(h("dt", { text: "Access" }), h("dd", { text: "macOS blocked Spelunk from reading this folder. Allow Full Disk Access (see the note at the top) and rescan." }));
   d.replaceChildren(
     h("div", {}, badge(info.safety)),
     h("h2", { text: info.title || n.name, style: { marginTop: "8px" } }),
