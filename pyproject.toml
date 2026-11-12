@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spelunk-mac"
+version = "0.1.0"
+description = "See everything that fills your Mac's disk, including hidden System Data, and decide what to delete or move."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Abdul Musawar Soomro" }]
+keywords = ["macos", "disk", "storage", "cleanup", "system data"]
+classifiers = [
+  "Environment :: MacOS X",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: System :: Filesystems",
+]
+
+[project.urls]
+Homepage = "https://github.com/mazzyy/spelunk"
+
+[project.scripts]
+spelunk = "spelunk.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools]
+packages = ["spelunk"]
+
+[tool.setuptools.package-data]
+spelunk = ["rules/*.json", "web/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

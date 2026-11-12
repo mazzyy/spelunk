@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spelunk</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23171a21'/%3E%3Cpath d='M6 24 L12 12 L16 18 L20 9 L26 24 Z' fill='%23e8b04b'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 25 L12 11 L16 18 L20 8 L27 25 Z"/></svg>
+      <span>Spelunk</span>
+    </div>
+    <div class="scan-status" id="scanStatus" aria-live="polite">Starting…</div>
+    <button class="btn ghost" id="rescanBtn" type="button">Rescan</button>
+  </header>
+
+  <main>
+    <section class="disk" aria-labelledby="diskTitle">
+      <div class="disk-head">
+        <h1 id="diskTitle">Your disk</h1>
+        <div class="disk-numbers" id="diskNumbers"></div>
+      </div>
+      <div class="bar" id="diskBar" role="img" aria-label="Disk usage breakdown"></div>
+      <ul class="legend" id="diskLegend"></ul>
+      <div class="notes" id="diskNotes"></div>
+    </section>
+
+    <div class="layout">
+      <section class="panel main-panel">
+        <nav class="tabs" role="tablist">
+          <button role="tab" class="tab active" data-tab="suggest" aria-selected="true">Suggestions</button>
+          <button role="tab" class="tab" data-tab="explore" aria-selected="false">Explore</button>
+          <button role="tab" class="tab" data-tab="history" aria-selected="false">Activity</button>
+        </nav>
+
+        <div class="tabpane" id="pane-suggest">
+          <p class="hint">The biggest things you can decide on. Nothing happens until you add items to the review list and confirm.</p>
+          <div id="suggestList" class="groups"></div>
+        </div>
+
+        <div class="tabpane hidden" id="pane-explore">
+          <div class="crumbs" id="crumbs"></div>
+          <div class="treemap" id="treemap"></div>
+          <div class="rows" id="exploreList"></div>
+        </div>
+
+        <div class="tabpane hidden" id="pane-history">
+          <p class="hint">Everything Spelunk did on this Mac. Moved items are listed in <code>Spelunk Archive/manifest.jsonl</code> on the drive.</p>
+          <div id="historyList" class="rows"></div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="panel detail" id="detail">
+          <div class="empty">Select anything to see what it is and whether it's safe to remove.</div>
+        </section>
+
+        <section class="panel queue" aria-labelledby="queueTitle">
+          <div class="queue-head">
+            <h2 id="queueTitle">Review list</h2>
+            <span class="queue-total" id="queueTotal">Empty</span>
+          </div>
+          <ul id="queueList" class="queue-list"></ul>
+          <div class="queue-actions">
+            <button class="btn" id="trashBtn" type="button" disabled>Move to Bin</button>
+            <button class="btn danger" id="deleteBtn" type="button" disabled>Delete permanently</button>
+            <div class="move-row">
+              <select id="driveSelect" aria-label="Destination drive"></select>
+              <button class="btn" id="moveBtn" type="button" disabled>Move to drive</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="planDialog">
+    <form method="dialog" class="dialog">
+      <h2 id="planTitle">Confirm</h2>
+      <div id="planBody"></div>
+      <label class="ack hidden" id="ackRow"><input type="checkbox" id="ackBox"> I've reviewed these items and understand what happens.</label>
+      <div class="dialog-actions">
+        <button class="btn ghost" id="cancelBtn" value="cancel" type="submit">Cancel</button>
+        <button class="btn primary" id="confirmBtn" type="button">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
