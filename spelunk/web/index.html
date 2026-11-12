@@ -17,7 +17,44 @@
     <button class="btn ghost" id="rescanBtn" type="button">Rescan</button>
   </header>
 
-  <main>
+  <section class="welcome hidden" id="welcome" aria-labelledby="welcomeTitle">
+    <div class="welcome-card">
+      <svg class="welcome-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 25 L12 11 L16 18 L20 8 L27 25 Z"/></svg>
+      <h1 id="welcomeTitle">Welcome to Spelunk</h1>
+      <p class="lead">Spelunk scans your Mac to show what's filling your disk. It only reads file names and sizes, everything stays on this Mac, and nothing is deleted or moved unless you confirm it.</p>
+
+      <h2>Why macOS will ask for permission</h2>
+      <p>macOS protects some folders, such as Desktop, Documents, Downloads, Mail, Messages, Photos and other apps' data. They're often where hidden "System Data" lives, so Spelunk needs your permission to measure them. Choose how you'd like to give it:</p>
+
+      <div class="choices">
+        <div class="choice recommended">
+          <span class="badge safe">Recommended</span>
+          <h3>Allow Full Disk Access</h3>
+          <p>One switch covers everything, so you won't get a separate pop-up for each folder.</p>
+          <ol>
+            <li>Click <b>Open System Settings</b>.</li>
+            <li>Find <b>Spelunk</b> in the list and switch it on. If it isn't listed, click <b>+</b> and choose Spelunk in Applications.</li>
+            <li>When macOS asks, click <b>Quit &amp; Reopen</b>.</li>
+          </ol>
+          <div class="choice-actions">
+            <button class="btn primary" id="fdaOpenBtn" type="button">Open System Settings</button>
+            <button class="btn hidden" id="fdaRestartBtn" type="button">I've switched it on — restart Spelunk</button>
+          </div>
+          <p class="hint hidden" id="fdaManualHint">After switching it on, quit Spelunk and open it again.</p>
+        </div>
+        <div class="choice">
+          <h3>Ask me folder by folder</h3>
+          <p>Start scanning now. macOS will ask separately for each protected folder it reaches. Anything you don't allow is shown as "no access", and you can turn on Full Disk Access later.</p>
+          <div class="choice-actions">
+            <button class="btn" id="askBtn" type="button">Start scan</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint">You can change this any time in System Settings › Privacy &amp; Security › Full Disk Access.</p>
+    </div>
+  </section>
+
+  <main id="mainContent">
     <section class="disk" aria-labelledby="diskTitle">
       <div class="disk-head">
         <h1 id="diskTitle">Your disk</h1>

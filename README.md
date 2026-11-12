@@ -81,7 +81,11 @@ Light and dark mode follow your Mac's setting.
    - Open **System Settings › Privacy & Security**.
    - Scroll down to *"Spelunk was blocked to protect your Mac"* and click **Open Anyway**, then confirm.
    - *(Terminal alternative: `xattr -dr com.apple.quarantine /Applications/Spelunk.app`)*
-5. To let Spelunk see protected folders (Mail, Messages, parts of Library), click **Open Full Disk Access settings** in the app, click **+**, choose **Spelunk**, switch it on, then quit and reopen Spelunk.
+5. **Choose how Spelunk may read your disk.** Before scanning anything, Spelunk explains why macOS will ask for permission and lets you pick:
+   - **Allow Full Disk Access** (recommended): one switch in System Settings, no pop-ups per folder. Click **Open System Settings**, switch **Spelunk** on (or click **+** and choose it), then click **Quit & Reopen** when macOS asks.
+   - **Ask me folder by folder**: scanning starts right away and macOS asks for each protected folder (Desktop, Documents, Downloads…). Anything you decline is shown as "no access".
+
+   <img src="docs/welcome.png" width="680" alt="Spelunk's welcome screen explaining why macOS asks for permission, with two choices: Allow Full Disk Access (recommended) or Ask me folder by folder">
 
 The downloadable app is for **Apple silicon Macs (M1 and newer)**. On an Intel Mac, [install from source](#install-from-source) or [build the app yourself](#build-the-app-yourself).
 
@@ -183,7 +187,10 @@ Spelunk runs entirely on your Mac. No account, no telemetry, no uploads, no netw
 No. It only suggests. You choose items, review the plan and confirm.
 
 **Why does it want Full Disk Access?**
-macOS hides Mail, Messages, Safari and parts of `~/Library` from every app by default, and those are often where "System Data" lives. Without access Spelunk still works and shows that space as *hidden*.
+macOS hides Mail, Messages, Safari and parts of `~/Library` from every app by default, and those are often where "System Data" lives. Spelunk asks first and explains why. It never scans before you choose. Without access it still works and shows that space as *hidden*.
+
+**Why did macOS show several permission pop-ups?**
+You chose "Ask me folder by folder", so macOS asks once for each protected folder. Allow Full Disk Access instead and they stop. macOS remembers your answers, so they don't come back.
 
 **What's the difference between Move to Bin and Delete permanently?**
 Bin is recoverable but only frees space after you empty the Bin. Delete frees space immediately and can't be undone.

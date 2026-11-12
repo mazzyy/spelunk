@@ -42,8 +42,8 @@ What works:
 - Explore: squarified treemap + list with breadcrumbs.
 - Review list → plan dialog → job with progress → results. Bin, permanent delete, verified move to external drive with manifest.
 - Action log, Activity tab, Show in Finder.
-- **Downloadable Mac app:** `Spelunk.app` (PyInstaller + pywebview native window) and a DMG, built by `packaging/build_app.sh` and by GitHub Actions on every `v*` tag (`.github/workflows/release.yml`). Optional Developer ID signing + notarization when secrets are set. Full Disk Access detection with an "Open settings" button.
-- 32 tests (scanner, rules, actions incl. failed-verification path, server security).
+- **Downloadable Mac app:** `Spelunk.app` (PyInstaller + pywebview native window) and a DMG, built by `packaging/build_app.sh` and by GitHub Actions on every `v*` tag (`.github/workflows/release.yml`). Optional Developer ID signing + notarization when secrets are set. Full Disk Access detection with an "Open settings" button, and a first-run welcome screen in the app: nothing is scanned until the user chooses Full Disk Access (one switch, then automatic restart) or folder-by-folder macOS prompts. The choice is saved in `~/.spelunk/settings.json`.
+- 35 tests (scanner, rules, actions incl. failed-verification path, server security).
 - Verified on a real MacBook home folder: 518k files scanned in 72 s (Python, read-only).
 
 Known limitations (each is addressed below):
@@ -73,7 +73,7 @@ Goal: the dashboard's numbers match macOS's own Storage screen within ~2%, and "
 
 Tasks:
 
-1. **Full Disk Access detection and onboarding.** Probe readability of `~/Library/Mail`, `~/Library/Messages`, `~/Library/Safari`. If blocked, show a first-run card with the exact steps and a "Check again" button. API: `GET /api/permissions` → `{full_disk_access: bool, blocked: [paths]}`.
+1. **Full Disk Access detection and onboarding.** *(Done in the app: welcome screen + detection. Remaining: re-check on window focus so the dashboard updates without a restart.)* Probe readability of `~/Library/Mail`, `~/Library/Messages`, `~/Library/Safari`. If blocked, show a first-run card with the exact steps and a "Check again" button. API: `GET /api/permissions` → `{full_disk_access: bool, blocked: [paths]}`.
 2. **Optional admin scan.** `python3 -m spelunk scan-system --out ~/.spelunk/system.json` run with `sudo` scans `/private/var`, `/Library`, `/Users/*` (other users: totals only, never names). The server never runs as root; it imports the JSON if present and newer than 24 h. UI shows "Run admin scan" with the command and a copy button.
 3. **APFS clone-aware sizes.** On APFS, `getattrlist` with `ATTR_CMNEXT_PRIVATESIZE` gives bytes not shared with clones. Implement via `ctypes` in `system.py` (`private_size(path) -> Optional[int]`), use it for files > 1 MB, fall back to `st_blocks`. Add a "shared with copies" note in the detail panel when private < allocated.
 4. **Purgeable space.** Read `NSURLVolumeAvailableCapacityForImportantUsageKey` vs `statfs` free (via a tiny `osascript -l JavaScript` bridge or `ctypes` + Foundation). Show "Purgeable: X GB (macOS frees this automatically)" in the disk bar.

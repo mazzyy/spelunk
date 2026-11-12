@@ -9,8 +9,9 @@ Spelunk is a tool that **deletes and moves files on people's computers**. Treat 
 3. **Move = copy → verify (SHA-256) → delete.** Never delete a source before every file is verified. On any failure, keep the original.
 4. **Re-check right before acting.** The disk can change between plan and execute (`_run` calls `check()` again).
 5. **Local only.** The server binds `127.0.0.1`, requires the per-launch token on every `/api/*` request, validates the `Host` header and requires JSON bodies. No outbound network calls in core code. Any future AI/explain feature must be opt-in and send paths/names only, never file contents.
-6. **Never run destructive tests against a real home folder.** Tests use `tmp_path` fixtures (`tests/conftest.py`).
-7. Insert file names into the DOM as text (`h()` helper / `textContent`), never as HTML.
+6. **Ask before touching protected folders.** In app mode nothing may read the disk before the welcome screen's choice (`App.needs_onboarding()`); don't add startup work that lists or reads user folders.
+7. **Never run destructive tests against a real home folder.** Tests use `tmp_path` fixtures (`tests/conftest.py`).
+8. Insert file names into the DOM as text (`h()` helper / `textContent`), never as HTML.
 
 ## Conventions
 

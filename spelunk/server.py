@@ -45,6 +45,45 @@ class App:
         self.scan_error: Optional[str] = None
         self._overview_cache: Optional[dict] = None
         self.app_mode = False  # True when running as Spelunk.app (texts say "Spelunk", not "your terminal")
+        self.relaunch = None  # set by desktop.py when the app can restart itself
+        self.settings_path = os.path.join(self.home, ".spelunk", "settings.json")
+        self.settings = self._load_settings()
+
+    # ----------------------------------------------------------- onboarding
+    def _load_settings(self) -> dict:
+        try:
+            with open(self.settings_path, encoding="utf-8") as f:
+                data = json.load(f)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_settings(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+            with open(self.settings_path, "w", encoding="utf-8") as f:
+                json.dump(self.settings, f, indent=2)
+        except OSError:
+            pass
+
+    def needs_onboarding(self) -> bool:
+        """Show the welcome screen before the first scan of the app.
+
+        Scanning touches folders macOS protects (Desktop, Documents, Mail,
+        other apps' data...), and each one pops up a system permission
+        dialog. We explain that first and let the user pick: Full Disk
+        Access (no pop-ups) or folder-by-folder prompts. Nothing is scanned
+        until they choose. With Full Disk Access already granted there is
+        nothing to ask, so we go straight to scanning.
+        """
+        if not self.app_mode or self.settings.get("onboarded"):
+            return False
+        return system.full_disk_access(self.home) is not True
+
+    def finish_onboarding(self, choice: str) -> bool:
+        self.settings.update({"onboarded": True, "permission_choice": choice})
+        self._save_settings()
+        return self.start_scan()
 
     # ------------------------------------------------------------- scanning
     def start_scan(self, roots: Optional[List[str]] = None) -> bool:
@@ -257,6 +296,9 @@ class Handler(BaseHTTPRequestHandler):
                 "home": app.home,
                 "error": app.scan_error,
                 "platform": system.platform.system(),
+                "app_mode": app.app_mode,
+                "needs_onboarding": app.needs_onboarding() and app.tree is None and not app.progress.running,
+                "can_relaunch": app.relaunch is not None,
             })
         if path == "/api/overview":
             return self._json(app.overview())
@@ -305,6 +347,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": system.reveal_in_finder(body.get("path", ""))})
         if path == "/api/open-privacy-settings":
             return self._json({"ok": system.open_full_disk_access_settings()})
+        if path == "/api/onboarding":
+            choice = body.get("choice")
+            if choice not in ("ask", "full-disk-access"):
+                return self._error(400, "choice must be 'ask' or 'full-disk-access'")
+            return self._json({"started": app.finish_onboarding(choice)})
+        if path == "/api/relaunch":
+            if app.relaunch is None:
+                return self._error(409, "Restart Spelunk yourself: quit it and open it again.")
+            threading.Timer(0.3, app.relaunch).start()  # let this response reach the window first
+            return self._json({"ok": True})
         return self._error(404, "unknown endpoint")
 
 

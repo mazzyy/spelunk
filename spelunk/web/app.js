@@ -96,6 +96,11 @@ async function poll() {
     return;
   }
   state.home = s.home;
+  if (s.needs_onboarding) {
+    showWelcome(s);
+    return; // nothing is scanned until the user picks how to grant access
+  }
+  hideWelcome();
   const p = s.scan;
   if (p.running) {
     state.scanDone = false;
@@ -110,6 +115,38 @@ async function poll() {
     await refreshAll();
   }
 }
+
+// ---------------------------------------------------------------- welcome
+function showWelcome(s) {
+  $("welcome").classList.remove("hidden");
+  $("mainContent").classList.add("hidden");
+  $("rescanBtn").classList.add("hidden");
+  $("scanStatus").textContent = "Waiting for you to choose how Spelunk may read your disk";
+  state.canRelaunch = !!s.can_relaunch;
+}
+function hideWelcome() {
+  $("welcome").classList.add("hidden");
+  $("mainContent").classList.remove("hidden");
+  $("rescanBtn").classList.remove("hidden");
+}
+$("fdaOpenBtn").addEventListener("click", async () => {
+  try { await api("/api/open-privacy-settings", {}); } catch (e) { toast(e.message); }
+  // Full Disk Access applies after a restart; offer one (or explain it).
+  $(state.canRelaunch ? "fdaRestartBtn" : "fdaManualHint").classList.remove("hidden");
+});
+$("fdaRestartBtn").addEventListener("click", async () => {
+  try {
+    await api("/api/relaunch", {});
+    $("scanStatus").textContent = "Restarting Spelunk…";
+  } catch (e) { toast(e.message); }
+});
+$("askBtn").addEventListener("click", async () => {
+  try {
+    await api("/api/onboarding", { choice: "ask" });
+  } catch (e) { toast(e.message); return; }
+  hideWelcome();
+  poll();
+});
 
 async function refreshAll() {
   await Promise.all([loadOverview(), loadSuggestions(), loadExplore(state.explorePath), loadExternals()]);

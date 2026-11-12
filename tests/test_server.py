@@ -1,4 +1,5 @@
 import http.client
+import os
 import json
 import threading
 import time
@@ -121,3 +122,39 @@ def test_big_files_in_personal_folders_are_suggested(tmp_path):
     recs = {r["path"]: r["info"]["id"] for r in app.recommendations(min_bytes=1_000_000)}
     assert recs[f"{home}/Movies/talk.mov"] in ("user-files", "videos")
     assert recs[f"{home}/Desktop/Lectures/week1.m4v"] == "videos"
+
+
+def test_app_waits_for_permission_choice_before_scanning(tmp_path, monkeypatch):
+    """Spelunk.app must not touch protected folders before the welcome screen."""
+    from spelunk import system
+    home = str(tmp_path / "h")
+    os.makedirs(home)
+    monkeypatch.setattr(system, "full_disk_access", lambda home=None: False)
+    app = App(roots=[home], home=home)
+    assert not app.needs_onboarding()          # dashboard run from source: scan right away
+    app.app_mode = True
+    assert app.needs_onboarding()              # the app: ask first
+    assert app.finish_onboarding("ask")        # user chose: starts the scan
+    assert not app.needs_onboarding()
+    assert json.load(open(os.path.join(home, ".spelunk", "settings.json")))["onboarded"] is True
+    again = App(roots=[home], home=home)
+    again.app_mode = True
+    assert not again.needs_onboarding()
+
+
+def test_full_disk_access_skips_the_welcome_screen(tmp_path, monkeypatch):
+    from spelunk import system
+    home = str(tmp_path / "h")
+    os.makedirs(home)
+    monkeypatch.setattr(system, "full_disk_access", lambda home=None: True)
+    app = App(roots=[home], home=home)
+    app.app_mode = True
+    assert not app.needs_onboarding()
+
+
+def test_onboarding_endpoint(server):
+    port, app = server
+    status, _ = call(port, "POST", "/api/onboarding", {"choice": "bogus"})
+    assert status == 400
+    status, data = call(port, "POST", "/api/relaunch", {})
+    assert status == 409  # not running as a bundled app

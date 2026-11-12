@@ -11,6 +11,8 @@ opens in the default browser instead.
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 import sys
 import threading
 import webbrowser
@@ -42,9 +44,13 @@ def main(argv=None) -> int:  # noqa: ANN001
 
     app = App()
     app.app_mode = True
+    app.relaunch = _relauncher()
     httpd, url, _token = make_server(app, port=args.port)
     threading.Thread(target=httpd.serve_forever, name="spelunk-http", daemon=True).start()
-    app.start_scan()
+    # Don't touch protected folders before the user has seen why we need
+    # them: the welcome screen starts the first scan (see App.needs_onboarding).
+    if not app.needs_onboarding():
+        app.start_scan()
 
     if args.no_window:
         print(url, flush=True)
@@ -64,6 +70,28 @@ def main(argv=None) -> int:  # noqa: ANN001
     webview.start()  # blocks on the main thread until the window closes
     httpd.shutdown()
     return 0
+
+
+def _relauncher():
+    """Return a function that reopens Spelunk.app, or None when not bundled.
+
+    Full Disk Access only takes effect after the app restarts, so the welcome
+    screen offers a "Restart Spelunk" button.
+    """
+    exe = os.path.realpath(sys.executable)
+    marker = ".app/Contents/MacOS/"
+    if sys.platform != "darwin" or marker not in exe:
+        return None
+    bundle = exe.split("/Contents/MacOS/")[0]
+
+    def relaunch() -> None:
+        subprocess.Popen(  # noqa: S603 - fixed arguments, no shell
+            ["/bin/sh", "-c", 'sleep 1; /usr/bin/open "$0"', bundle],
+            start_new_session=True,
+        )
+        os._exit(0)
+
+    return relaunch
 
 
 def _wait(httpd) -> int:  # noqa: ANN001
